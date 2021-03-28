@@ -17,8 +17,7 @@
     "instagram-private-api": "latest",
     "lodash": "latest",
     "mkdirp": "latest",
-    "toml": "latest",
-    "winston": "latest"
+    "toml": "latest"
   },
   "devDependencies": {
     "@types/download": "latest",
