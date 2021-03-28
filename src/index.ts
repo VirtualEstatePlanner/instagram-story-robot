@@ -1,19 +1,20 @@
+const fs = require('fs').promises
+import path from 'path'
 import { Config } from './config'
 import { IgApiClient, UserStoryFeedResponseItemsItem } from 'instagram-private-api'
 
 import _ from 'lodash'
-import winston from 'winston'
 import download from 'download'
 import mkdirp from 'mkdirp'
 import { IImageDimensions } from './interfaces/IImageDimensions'
 
-export class InstagramManagement {
-  static initialize() {
-    throw new Error('Method not implemented.')
+class InstagramManagement {
+  async initialize() {
+    await this.instagram.simulate.preLoginFlow()
+    this.currentUser = await this.instagram.account.login(Config.Instagram.Username, Config.Instagram.Password)
+    console.log(`Logged in to Instagram as : ${this.currentUser}`)
   }
-  static scrapeStories(un: string, folderPth: string) {
-    throw new Error('Method not implemented.')
-  }
+
   instagram: IgApiClient
   currentUser: any
   constructor() {
@@ -21,13 +22,6 @@ export class InstagramManagement {
     this.instagram.state.generateDevice(Config.Instagram.Username)
 
     this.currentUser = null
-  }
-
-  async initialize() {
-    await this.instagram.simulate.preLoginFlow()
-    this.currentUser = await this.instagram.account.login(Config.Instagram.Username, Config.Instagram.Password)
-    winston.debug('Current User:', this.currentUser)
-    winston.info('Logged into Instagram.')
   }
 
   async saveFile(fileURL: string, baseFolder: string | undefined) {
@@ -51,7 +45,7 @@ export class InstagramManagement {
         await this.saveFile(this.findBestQuality(storyData.video_versions), baseFolder)
         break
       default:
-        winston.error('Found unknown type of file:', storyData)
+        throw new Error(`SaveStory method: hit default case in story.Datamedia_type switch`)
         break
     }
   }
@@ -70,9 +64,11 @@ export class InstagramManagement {
       (storyList) => {
         return storyList.map((s) => this.saveStory(s, baseFolder))
       },
-      (error) => winston.error(error),
+      (error) => {
+        throw new Error(error)
+      },
       () => {
-        winston.debug('Done scraping.')
+        console.log('Done scraping.')
         resolve()
       }
     )
@@ -80,5 +76,57 @@ export class InstagramManagement {
     return r
   }
 }
+
+const configFilePath = Config.TimestampFile || 'next_execution_timestamp'
+
+async function executeScrape(time: number) {
+  const timeNow = new Date()
+  await Promise.all(
+    Config.Targets.targets.map(async (un: string) => {
+      console.info({
+        message: 'Started scraping',
+        username: un,
+      })
+
+      let folderPth: string
+      if (Config.FolderFormat === 1) {
+        folderPth = path.join(Config.BaseFolder, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`, un)
+      } else if (Config.FolderFormat === 2) {
+        folderPth = path.join(Config.BaseFolder, un, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`)
+      } else {
+        throw new Error(`Execute Scrape Error: Invalid Folder Format found: ${Config.FolderFormat}`)
+      }
+      InstagramManagement.scrapeStories(un, folderPth)
+      console.log(`finished scraping user ${un}`)
+    })
+  )
+
+  const nextTicker = time + 24 * 60 * 60 * 1000
+  const b = Buffer.alloc(8)
+  b.writeDoubleLE(nextTicker)
+  await fs.writeFile(configFilePath, b)
+  setTimeout(() => executeScrape(nextTicker), nextTicker - Date.now())
+}
+
+async function main() {
+  InstagramManagement.initialize()
+
+  console.log(`Instagram Management instance initialized!`)
+  try {
+    await fs.access(configFilePath)
+  } catch (e) {
+    await executeScrape(Date.now())
+    return
+  }
+  const time1 = Date.now()
+  let nextTick = (await fs.readFile(configFilePath)).readDoubleLE()
+  const offset = time1 - Date.now()
+  nextTick = nextTick + offset
+  const timeRemaining = nextTick - Date.now()
+
+  setTimeout(() => executeScrape(nextTick), timeRemaining)
+}
+
+main().catch((e) => console.error(e))
 
 export const im = new InstagramManagement()
