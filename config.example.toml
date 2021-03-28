@@ -8,7 +8,6 @@ BaseFolder = '/home/user/instagram_stories/'
 # 2 puts the account first, that is, the typical folder structure past base is example/2021-3/2/storyid.jpg
 FolderFormat = 1
 
-
 # Fairly obvious
 [Instagram]
 Username = 'Username'

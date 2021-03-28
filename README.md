@@ -2,7 +2,7 @@
 
 ## What
 
-This is a little service I wrote to scrape certain profile stories every 24 hours and save it locally. 
+This is a little service I wrote to scrape certain profile stories every 24 hours and save it locally.
 It automatically logs in to the configured Instagram profile, downloads the stories, and will run itself every 24 hours.
 
 ## Why
