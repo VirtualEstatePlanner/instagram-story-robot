@@ -5,7 +5,17 @@ import _ from 'lodash'
 import download from 'download'
 import mkdirp from 'mkdirp'
 import toml from 'toml'
-import { IScraperConfig } from './interfaces/IScraperConfig'
+
+interface IScraperConfig {
+  Instagram: {
+    Username: string
+    Password: string
+  }
+  FolderFormat: number
+  TimestampFile: string
+  Targets: string[]
+  BaseFolder: string
+}
 
 const tomlConfig: string = fs.readFileSync('config.toml').toString()
 const runtimeConfig: IScraperConfig = toml.parse(tomlConfig)
@@ -15,7 +25,7 @@ let instagramClient: IGAPI.IgApiClient = new IGAPI.IgApiClient()
 instagramClient.simulate.preLoginFlow()
 instagramClient.state.generateDevice(runtimeConfig.Instagram.Username)
 instagramClient.account.login(runtimeConfig.Instagram.Username, runtimeConfig.Instagram.Password)
-console.log(`Logged in to Instagram as : ${runtimeConfig.Instagram.Username}`)
+console.log(runtimeConfig.Instagram)
 
 const findBestQuality: Function = async (listOfVersions: IGAPI.UserStoryFeedResponseItemsItem[]) => {
   return _.first(
@@ -38,10 +48,10 @@ const saveFile: Function = async (fileURL: string, baseFolder: string | undefine
 const saveStory: Function = async (storyData: IGAPI.UserStoryFeedResponseItemsItem, baseFolder: any) => {
   switch (storyData.media_type) {
     case 1:
-      saveFile(findBestQuality(storyData.image_versions2.candidates), baseFolder)
+      await saveFile(findBestQuality(storyData.image_versions2.candidates), baseFolder)
       break
     case 2:
-      saveFile(findBestQuality(storyData.video_versions), baseFolder)
+      await saveFile(findBestQuality(storyData.video_versions), baseFolder)
       break
     default:
       throw new Error(`Error in saveStory: hit default case in storyData.media_type switch`)
@@ -64,9 +74,9 @@ const scrapeStories: Function = async (username: string, baseFolder: string) => 
     },
     () => {
       resolve()
-      console.log('Done scraping.')
     }
   )
+  console.log(`scraped ${username}`)
   return scrapePromise
 }
 
@@ -74,24 +84,17 @@ const executeScrape: Function = async (time: number) => {
   const timeNow = new Date()
   const nextTicker: number = time + 24 * 60 * 60 * 1000
   const buffer: Buffer = Buffer.alloc(8)
-  await Promise.all(
-    runtimeConfig.Targets.map(
-      async (eachTarget: string): Promise<void> => {
-        console.log(`Started scraping ${eachTarget}`)
-
-        let folderPath: string
-        if (runtimeConfig.FolderFormat === 1) {
-          folderPath = path.join(runtimeConfig.BaseFolder, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`, eachTarget)
-        } else if (runtimeConfig.FolderFormat === 2) {
-          folderPath = path.join(runtimeConfig.BaseFolder, eachTarget, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`)
-        } else {
-          throw new Error(`Execute Scrape Error: Invalid Folder Format found: ${runtimeConfig.FolderFormat}`)
-        }
-        scrapeStories(eachTarget, folderPath)
-        console.log(`finished scraping user ${eachTarget}`)
-      }
-    )
-  )
+  runtimeConfig.Targets.map((eachTarget: string): void => {
+    let folderPath: string
+    if (runtimeConfig.FolderFormat === 1) {
+      folderPath = path.join(runtimeConfig.BaseFolder, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`, eachTarget)
+    } else if (runtimeConfig.FolderFormat === 2) {
+      folderPath = path.join(runtimeConfig.BaseFolder, eachTarget, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`)
+    } else {
+      throw new Error(`Execute Scrape Error: Invalid Folder Format found: ${runtimeConfig.FolderFormat}`)
+    }
+    scrapeStories(eachTarget, folderPath)
+  })
   buffer.writeDoubleLE(nextTicker)
   fs.writeFileSync(runAgainNext, buffer)
   setTimeout(() => executeScrape(nextTicker), nextTicker - Date.now())
