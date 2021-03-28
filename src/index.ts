@@ -1,17 +1,20 @@
-const fs = require('fs').promises
 import path from 'path'
-import { Config } from './config'
-import { IgApiClient, UserStoryFeedResponseItemsItem } from 'instagram-private-api'
-
+import fs from 'fs'
+import toml from 'toml'
 import _ from 'lodash'
-import download from 'download'
 import mkdirp from 'mkdirp'
+import download from 'download'
+import { IgApiClient, UserStoryFeedResponseItemsItem } from 'instagram-private-api'
+import { IScraperConfig } from './interfaces/IScraperConfig'
 import { IImageDimensions } from './interfaces/IImageDimensions'
+
+const tomlConfigPath: string = fs.readFileSync(process.env.CONFIG_PATH || 'config.toml').toString()
+const runtimeConfig: IScraperConfig = toml.parse(tomlConfigPath)
 
 class InstagramManagement {
   async initialize() {
     await this.instagram.simulate.preLoginFlow()
-    this.currentUser = await this.instagram.account.login(Config.Instagram.Username, Config.Instagram.Password)
+    this.currentUser = await this.instagram.account.login(runtimeConfig.Instagram.Username, runtimeConfig.Instagram.Password)
     console.log(`Logged in to Instagram as : ${this.currentUser}`)
   }
 
@@ -19,7 +22,7 @@ class InstagramManagement {
   currentUser: any
   constructor() {
     this.instagram = new IgApiClient()
-    this.instagram.state.generateDevice(Config.Instagram.Username)
+    this.instagram.state.generateDevice(runtimeConfig.Instagram.Username)
 
     this.currentUser = null
   }
@@ -28,7 +31,7 @@ class InstagramManagement {
     return download(fileURL, baseFolder)
   }
 
-  findBestQuality(listOfVersions: UserStoryFeedResponseItemsItem[]) {
+  async findBestQuality(listOfVersions: UserStoryFeedResponseItemsItem[]) {
     return _.first(
       listOfVersions.sort((version: IImageDimensions) => {
         return version.height * version.width
@@ -51,7 +54,7 @@ class InstagramManagement {
   }
 
   async scrapeStories(username: string, baseFolder: string) {
-    await mkdirp(baseFolder)
+    await mkdirp(`${baseFolder}/${username}`)
     const storyFeed = this.instagram.feed.userStory(await this.instagram.user.getIdByUsername(username))
     await storyFeed.request()
 
@@ -76,34 +79,31 @@ class InstagramManagement {
   }
 }
 
-const configFilePath = Config.TimestampFile || 'next_execution_timestamp'
+const runAgainNext = runtimeConfig.TimestampFile || 'next_execution_timestamp'
 
 async function executeScrape(time: number) {
   const timeNow = new Date()
   await Promise.all(
-    Config.Targets.targets.map(async (un: string) => {
-      console.info({
-        message: 'Started scraping',
-        username: un,
-      })
+    runtimeConfig.Targets.map(async (scrapedUser: string) => {
+      console.log(`Started scraping ${scrapedUser}`)
 
       let folderPth: string
-      if (Config.FolderFormat === 1) {
-        folderPth = path.join(Config.BaseFolder, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`, un)
-      } else if (Config.FolderFormat === 2) {
-        folderPth = path.join(Config.BaseFolder, un, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`)
+      if (runtimeConfig.FolderFormat === 1) {
+        folderPth = path.join(runtimeConfig.BaseFolder, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`, scrapedUser)
+      } else if (runtimeConfig.FolderFormat === 2) {
+        folderPth = path.join(runtimeConfig.BaseFolder, scrapedUser, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`)
       } else {
-        throw new Error(`Execute Scrape Error: Invalid Folder Format found: ${Config.FolderFormat}`)
+        throw new Error(`Execute Scrape Error: Invalid Folder Format found: ${runtimeConfig.FolderFormat}`)
       }
-      InstagramManagement.scrapeStories(un, folderPth)
-      console.log(`finished scraping user ${un}`)
+      InstagramManagement.scrapeStories(scrapedUser, folderPth)
+      console.log(`finished scraping user ${scrapedUser}`)
     })
   )
 
-  const nextTicker = time + 24 * 60 * 60 * 1000
-  const b = Buffer.alloc(8)
-  b.writeDoubleLE(nextTicker)
-  await fs.writeFile(configFilePath, b)
+  const nextTicker: number = time + 24 * 60 * 60 * 1000
+  const buffer: Buffer = Buffer.alloc(8)
+  buffer.writeDoubleLE(nextTicker)
+  fs.writeFileSync(runAgainNext, buffer)
   setTimeout(() => executeScrape(nextTicker), nextTicker - Date.now())
 }
 
@@ -112,13 +112,13 @@ async function main() {
 
   console.log(`Instagram Management instance initialized!`)
   try {
-    await fs.access(configFilePath)
+    fs.accessSync(runAgainNext)
   } catch (e) {
     await executeScrape(Date.now())
     return
   }
   const time1 = Date.now()
-  let nextTick = (await fs.readFile(configFilePath)).readDoubleLE()
+  let nextTick = fs.readFileSync(runAgainNext).readDoubleLE()
   const offset = time1 - Date.now()
   nextTick = nextTick + offset
   const timeRemaining = nextTick - Date.now()
