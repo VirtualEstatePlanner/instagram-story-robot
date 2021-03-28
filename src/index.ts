@@ -25,7 +25,6 @@ let instagramClient: IGAPI.IgApiClient = new IGAPI.IgApiClient()
 instagramClient.simulate.preLoginFlow()
 instagramClient.state.generateDevice(runtimeConfig.Instagram.Username)
 instagramClient.account.login(runtimeConfig.Instagram.Username, runtimeConfig.Instagram.Password)
-console.log(runtimeConfig.Instagram)
 
 const findBestQuality: Function = async (listOfVersions: IGAPI.UserStoryFeedResponseItemsItem[]) => {
   return _.first(
@@ -58,13 +57,13 @@ const saveStory: Function = async (storyData: IGAPI.UserStoryFeedResponseItemsIt
   }
 }
 
-const scrapeStories: Function = async (username: string, baseFolder: string) => {
+const scrapeStories: Function = async (username: string, baseFolder: string): Promise<unknown> => {
   await mkdirp(`${baseFolder}/${username}`)
   const storyFeed = instagramClient.feed.userStory(await instagramClient.user.getIdByUsername(username))
   await storyFeed.request()
 
   let resolve: Function
-  const scrapePromise = new Promise((resolution) => (resolve = resolution))
+  const scrapePromise: Promise<unknown> = new Promise((resolution) => (resolve = resolution))
   storyFeed.items$.subscribe(
     (storyList: IGAPI.UserStoryFeedResponseItemsItem[]) => {
       return storyList.map((story) => saveStory(story, baseFolder))
@@ -76,11 +75,10 @@ const scrapeStories: Function = async (username: string, baseFolder: string) => 
       resolve()
     }
   )
-  console.log(`scraped ${username}`)
   return scrapePromise
 }
 
-const executeScrape: Function = async (time: number) => {
+const executeScrape: Function = async (time: number): Promise<void> => {
   const timeNow = new Date()
   const nextTicker: number = time + 24 * 60 * 60 * 1000
   const buffer: Buffer = Buffer.alloc(8)
@@ -116,4 +114,7 @@ const main: Function = async (): Promise<void> => {
   setTimeout(() => executeScrape(nextTick), timeRemaining)
 }
 
-main().catch((e: Error) => console.error(e))
+main().catch((e: Error): void => {
+  console.log(e)
+  throw new Error(e.toString())
+})
