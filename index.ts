@@ -1,1 +1,1 @@
-require("isr/main");
+require('isr/main')

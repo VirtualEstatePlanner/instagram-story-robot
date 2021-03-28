@@ -1,8 +1,6 @@
 {
   "arrowParens": "always",
-  "jsxBracketSameLine": true,
-  "jsxSingleQuote": true,
-  "requirePragma": true,
+  "requirePragma": false,
   "printWidth": 200,
   "quoteProps": "consistent",
   "semi": false,

@@ -15,75 +15,65 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-const fs = require("fs").promises;
-import path from "path";
-import { Config } from "./config";
+const fs = require('fs').promises
+import path from 'path'
+import { Config } from './config'
 
-import winston from "winston";
-import { InstagramManagement } from "./index";
+import winston from 'winston'
+import { InstagramManagement } from './index'
 
-const configFilePath = Config.TimestampFile || "next_execution_timestamp";
+const configFilePath = Config.TimestampFile || 'next_execution_timestamp'
 
 async function executeScrape(time: number) {
-  const timeNow = new Date();
+  const timeNow = new Date()
   await Promise.all(
     Config.Targets.targets.map(async (un: string) => {
       winston.info({
-        message: "Started scraping",
+        message: 'Started scraping',
         username: un,
-      });
+      })
 
-      let folderPth: string;
+      let folderPth: string
       if (Config.FolderFormat === 1) {
-        folderPth = path.join(
-          Config.BaseFolder,
-          `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`,
-          `${timeNow.getDate().toString()}/`,
-          un
-        );
+        folderPth = path.join(Config.BaseFolder, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`, un)
       } else if (Config.FolderFormat === 2) {
-        folderPth = path.join(
-          Config.BaseFolder,
-          un,
-          `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`,
-          `${timeNow.getDate().toString()}/`
-        );
+        folderPth = path.join(Config.BaseFolder, un, `${timeNow.getFullYear()}-${timeNow.getMonth() + 1}`, `${timeNow.getDate().toString()}/`)
       } else {
-        winston.error("Invalid Folder Format found: " + Config.FolderFormat);
-        process.exit(11);
+        winston.error('Invalid Folder Format found: ' + Config.FolderFormat)
+        process.exit(11)
       }
-      InstagramManagement.scrapeStories(un, folderPth);
+      InstagramManagement.scrapeStories(un, folderPth)
       winston.info({
-        message: "Done scraping",
+        message: 'Done scraping',
         username: un,
-      });
+      })
     })
-  );
+  )
 
-  const nextTicker = time + 24 * 60 * 60 * 1000;
-  const b = Buffer.alloc(8);
-  b.writeDoubleLE(nextTicker);
-  await fs.writeFile(configFilePath, b);
-  setTimeout(() => executeScrape(nextTicker), nextTicker - Date.now());
+  const nextTicker = time + 24 * 60 * 60 * 1000
+  const b = Buffer.alloc(8)
+  b.writeDoubleLE(nextTicker)
+  await fs.writeFile(configFilePath, b)
+  setTimeout(() => executeScrape(nextTicker), nextTicker - Date.now())
 }
 
 async function main() {
-  InstagramManagement.initialize();
+  InstagramManagement.initialize()
 
-  winston.info("Instagram initialized!");
+  winston.info('Instagram initialized!')
   try {
-    await fs.access(configFilePath);
+    await fs.access(configFilePath)
   } catch (e) {
-    await executeScrape(Date.now());
-    return;
+    await executeScrape(Date.now())
+    return
   }
-  const time1 = Date.now();
-  let nextTick = (await fs.readFile(configFilePath)).readDoubleLE();
-  const offset = time1 - Date.now();
-  nextTick = nextTick + offset;
-  const timeRemaining = nextTick - Date.now();
+  const time1 = Date.now()
+  let nextTick = (await fs.readFile(configFilePath)).readDoubleLE()
+  const offset = time1 - Date.now()
+  nextTick = nextTick + offset
+  const timeRemaining = nextTick - Date.now()
 
-  setTimeout(() => executeScrape(nextTick), timeRemaining);
+  setTimeout(() => executeScrape(nextTick), timeRemaining)
 }
 
-main().catch((e) => console.error(e));
+main().catch((e) => console.error(e))
