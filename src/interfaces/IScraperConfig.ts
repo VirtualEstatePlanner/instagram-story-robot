@@ -1,5 +1,8 @@
 export interface IScraperConfig {
-  Instagram: any
+  Instagram: {
+    Username: string
+    Password: string
+  }
   FolderFormat: number
   TimestampFile: string
   Targets: string[]
