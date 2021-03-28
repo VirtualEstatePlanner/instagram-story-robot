@@ -1,10 +1,8 @@
-
 yarn-error.log*
 package-lock.json
-
+yarn.lock
 node_modules
-output
 
 config.toml
+output
 next_execution_timestamp
-yarn.lock
