@@ -1,7 +1,7 @@
 export interface IScraperConfig {
   Instagram: any
   FolderFormat: number
-  TimestampFile: any
-  Targets: any
+  TimestampFile: string
+  Targets: string[]
   BaseFolder: string
 }

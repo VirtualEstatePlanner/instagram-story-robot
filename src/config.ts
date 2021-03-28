@@ -5,8 +5,8 @@ import { IScraperConfig } from './interfaces/IScraperConfig'
 let blankConfig: IScraperConfig = {
   Instagram: ``,
   FolderFormat: 1,
-  TimestampFile: {},
-  Targets: {},
+  TimestampFile: ``,
+  Targets: [],
   BaseFolder: ``,
 }
 
