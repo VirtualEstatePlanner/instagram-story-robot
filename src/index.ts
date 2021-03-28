@@ -21,7 +21,7 @@ interface IScraperConfig {
 }
 
 // read config.toml file
-const tomlConfig: string = fs.readFileSync(`config.toml`).toString()
+const tomlConfig: string = fs.readFileSync(`./config.toml`).toString()
 // parse toml into config
 const runtimeConfig: IScraperConfig = toml.parse(tomlConfig)
 
