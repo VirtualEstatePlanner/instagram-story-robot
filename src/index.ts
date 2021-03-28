@@ -56,7 +56,6 @@ class InstagramManagement {
     await storyFeed.request()
 
     let resolve: Function
-    // eslint-disable-next-line promise/param-names
     const r = new Promise((rz) => {
       resolve = rz
     })
