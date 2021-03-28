@@ -17,9 +17,9 @@ interface IScraperConfig {
   BaseFolder: string
 }
 
-const tomlConfig: string = fs.readFileSync('config.toml').toString()
+const tomlConfig: string = fs.readFileSync(`config.toml`).toString()
 const runtimeConfig: IScraperConfig = toml.parse(tomlConfig)
-const runAgainNext = 'next_execution_timestamp'
+const runAgainNext = `next_execution_timestamp`
 
 let instagramClient: IGAPI.IgApiClient = new IGAPI.IgApiClient()
 instagramClient.simulate.preLoginFlow()
