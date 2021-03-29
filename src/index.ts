@@ -4,10 +4,8 @@ import { executeScrape } from './functions/executeScrape'
 
 const main: Function = async (): Promise<void> => {
   try {
-    console.log(`checking if timestamp file is readable`)
     fs.accessSync(`./next_execution_timestamp`)
   } catch (e: unknown) {
-    console.log(`scraping from main function after catch`)
     await executeScrape(Date.now())
     return
   }
@@ -21,7 +19,5 @@ const main: Function = async (): Promise<void> => {
 }
 
 main().catch((e: Error): void => {
-  console.log(`running main function`)
-  console.log(e)
   throw new Error(e.toString())
 })
