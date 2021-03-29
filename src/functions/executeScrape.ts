@@ -22,7 +22,6 @@ export const executeScrape: Function = async (time: number): Promise<void> => {
     scrapeStories(eachTarget, folderPath)
   })
   buffer.writeDoubleLE(nextTicker)
-  //  console.log(`writing timestamp for next scrape to disk`)
   //  fs.writeFileSync(`./next_execution_timestamp`, buffer)
   setTimeout(() => executeScrape(nextTicker), nextTicker - Date.now())
 }
