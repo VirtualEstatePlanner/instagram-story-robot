@@ -9,7 +9,7 @@
   "private": true,
   "scripts": {
     "type": "node node_modules/.bin/tsc -w --noEmit",
-    "start": "NODE_PATH=. NODE_ENV=production yarn ts-node src index.ts",
+    "start": "DEBUG=ig:* NODE_PATH=. NODE_ENV=production yarn ts-node src index.ts",
     "pretty": "node node_modules/.bin/prettier --write ."
   },
   "dependencies": {
